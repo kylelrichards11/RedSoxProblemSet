@@ -1,0 +1,5 @@
+__pycache__
+*.csv
+*.feather
+.DS_Store
+*.pdf
