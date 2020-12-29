@@ -78,3 +78,24 @@ def make_label(data):
     new_cols = set(new_data.columns) - set(data.columns)
     new_data["SwingAndMiss"] = new_data["PitchResult_Swinging strike"]
     return new_data.drop(columns=list(new_cols))
+
+
+def set_index(data):
+    """ Creates and sets a sortable chronological unique index for each pitch in the data 
+    
+    Parameters
+    ----------
+    data (DataFrame) : the data with the pitches. Requires columns GameDate, DayNight_Night, GameNumber, and GameSeqNum
+
+    Returns
+    -------
+    DataFrame : the data with the sortable chronolical unique index    
+    """
+    data["Index"] = (
+        data["GameDate"].str.replace('-', '').astype(str) +
+        data["DayNight_Night"].astype(str) +
+        data["GameNumber"].astype(str) +
+        data["GameSeqNum"].astype(str).str.zfill(3)
+    ).astype(int)
+    data.index = data["Index"]
+    return data.sort_index()
