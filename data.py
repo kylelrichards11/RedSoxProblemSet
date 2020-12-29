@@ -3,8 +3,10 @@ import os
 import pandas as pd
 from pathlib import Path
 
+
 def load_holdout(columns=None):
-    """ Loads the holdout data held in Application_Holdout.csv as a cudf DataFrame. If a feather file does not exists it creates one to load from next time. Otherwise it loads from the feather file for faster load. 
+    """ Loads the holdout data held in Application_Holdout.csv as a cudf DataFrame. If a feather file does not exists it
+    creates one to load from next time. Otherwise it loads from the feather file for faster load.
     
     Parameters
     ----------
@@ -22,8 +24,10 @@ def load_holdout(columns=None):
         data.to_feather(p._str)
     return cudf.from_pandas(data)
 
+
 def load_train(columns=None):
-    """ Loads the training data held in Application_Train.csv as a cudf DataFrame. If a feather file does not exists it creates one to load from next time. Otherwise it loads from the feather file for faster load. 
+    """ Loads the training data held in Application_Train.csv as a cudf DataFrame. If a feather file does not exists it 
+    creates one to load from next time. Otherwise it loads from the feather file for faster load. 
     
     Parameters
     ----------
@@ -41,6 +45,7 @@ def load_train(columns=None):
         data.to_feather(p._str)
     return cudf.from_pandas(data)
 
+
 def one_hot_encode(data, columns=["BatterHand", "PitcherHand", "DayNight", "PitchType", "TopInning"]):
     """ One hot encodes the given categorical columns 
     
@@ -48,7 +53,8 @@ def one_hot_encode(data, columns=["BatterHand", "PitcherHand", "DayNight", "Pitc
     ----------
     data (DataFrame) : the data to one hot encode
 
-    columns (list, default=["BatterHand", "PitcherHand", "DayNight", "PitchType", "TopInning"]) : the columns to one hot encode
+    columns (list, default=["BatterHand", "PitcherHand", "DayNight", "PitchType", "TopInning"]) : the columns to one hot 
+    encode
 
     Returns
     -------
