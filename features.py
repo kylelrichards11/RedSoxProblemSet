@@ -1,11 +1,9 @@
+from datetime import datetime
+
 import cudf
 from numba import cuda
 import numpy as np
 import pandas as pd
-
-# TODO:
-# Appearance Gap
-# Pitch runs ahead
 
 
 def _group_by_unique_count(group_col):
@@ -129,3 +127,26 @@ def pitch_of_season(data):
         outcols={"PitchOfSeason": np.int16}
     )
     return results.sort_index()
+
+
+def runs_ahead(data):
+    """ Calulcates the number of runs the pitcher is currently ahead by. If the pitcher is behind then the number is 
+    negative.
+
+    Parameters
+    ----------
+    data (DataFrame) : the dataset containing the pitches
+
+    Returns
+    -------
+    DataFrame : the dataset with the feature RunsAhead
+    """
+    def check_negate(ScoreDiff, TopInning_TOP, RunsAhead):
+        for i, (s, t) in enumerate(zip(ScoreDiff, TopInning_TOP)):
+            RunsAhead[i] = s if t == 0 else -s
+
+    data["ScoreDiff"] = data["AwayScore"] - data["HomeScore"]
+    data = data.apply_rows(check_negate, incols=["ScoreDiff", "TopInning_TOP"],
+                           outcols={"RunsAhead": np.int16}, kwargs={})
+    data = data.drop(columns=["ScoreDiff"])
+    return data
