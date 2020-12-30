@@ -33,6 +33,42 @@ def _group_by_unique_count(group_col):
     return list(map(lambda x: mapping[x], list(group_col.to_array())))
 
 
+def appearance_gap(data):
+    """ Calculates the number of days between the pitcher's current appearance and their last appearance. The gap is 
+    capped at 14 days 
+    
+    Parameters
+    ----------
+    data (DataFrame) : the dataset containing the pitches
+
+    Returns
+    -------
+    DataFrame : the dataset with the feature AppearanceGap
+    """
+    group_col = (
+        data["PitcherID"].astype(str) +
+        ',' +
+        data["GameDate"].astype(str) +
+        '_' +
+        data["DayNight_Night"].astype(str)
+    )
+    mapping = {}
+    d = {}
+    last_date = {}
+    for uq in np.sort(group_col.unique().to_array()):
+        pitcher_key, date_key = uq.split(',')
+        date = datetime.strptime(date_key.split('_')[0], "%Y-%m-%d")
+        if pitcher_key not in d:
+            d[pitcher_key] = {date_key: 14}
+            last_date[pitcher_key] = date
+        elif date_key not in d[pitcher_key]:
+            d[pitcher_key][date_key] = min(14, (date - last_date[pitcher_key]).days)
+            last_date[pitcher_key] = date
+        mapping[uq] = d[pitcher_key][date_key]
+    data["AppearanceGap"] = list(map(lambda x: mapping[x], list(group_col.to_array())))
+    return data
+
+
 def pa_of_game(data):
     """ Calculates a numeric value that gives the current number of batters the pitcher has thrown against in the 
     current game.
