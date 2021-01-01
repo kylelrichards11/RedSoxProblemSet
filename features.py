@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 import cudf
 from numba import cuda
@@ -16,7 +17,7 @@ def _group_by_unique_count(group_col):
 
     Returns
     -------
-    list : the counts        
+    list : the counts
     """
     mapping = {}
     d = {}
@@ -29,6 +30,35 @@ def _group_by_unique_count(group_col):
         elif uq_key not in d[group_by_key]:
             d[group_by_key][uq_key] = last_index[group_by_key]
             last_index[group_by_key] += 1
+        mapping[uq] = d[group_by_key][uq_key]
+    return list(map(lambda x: mapping[x], list(group_col.to_array())))
+
+
+def _group_by_cumsum(group_col, sum_col):
+    """ Groups by the unique values in the given column and returns a series for the cumulative sum of each unqiue value
+    in the order they are seen in the group_col 
+    
+    Parameters
+    ----------
+    group_col (Series) : the column to group by. Contains group by keys and unique keys separated by a comma
+    
+    sum_col (Series) : the column with values to add
+
+    Returns
+    -------
+    list : the sums
+    """
+    mapping = {}
+    d = {}
+    last_index = {}
+    for uq, val in zip(group_col.to_array(), sum_col.to_array()):
+        group_by_key, uq_key = uq.split(',')
+        if group_by_key not in d:
+            d[group_by_key] = {uq_key: val}
+            last_index[group_by_key] = val
+        elif uq_key not in d[group_by_key]:
+            d[group_by_key][uq_key] = last_index[group_by_key] + val
+            last_index[group_by_key] += val
         mapping[uq] = d[group_by_key][uq_key]
     return list(map(lambda x: mapping[x], list(group_col.to_array())))
 
@@ -66,6 +96,43 @@ def appearance_gap(data):
             last_date[pitcher_key] = date
         mapping[uq] = d[pitcher_key][date_key]
     data["AppearanceGap"] = list(map(lambda x: mapping[x], list(group_col.to_array())))
+    return data
+
+
+def cumulative_avg_velocities_game(data):
+    """ Calculates a numeric value that gives the cumulative average pitch speeds per pitch type and overall per game.
+    
+    Parameters
+    ----------
+    data (DataFrame) : the dataset containing the pitches
+
+    Returns
+    -------
+    DataFrame : the dataset with the features ReleaseSpeedAvgGame, ReleaseSpeedAvgGameCB, ReleaseSpeedAvgGameCH, etc.
+    """
+
+    group_col = (
+        data["PitcherID"].astype(str) +
+        data["GameNumber"].astype(str) +
+        "," +
+        data["GameSeqNum"].astype(str)
+    )
+    data["temp"] = _group_by_cumsum(group_col, data["ReleaseSpeed"])
+    data["ReleaseSpeedAvgGame"] = data["temp"]/(data["PitchOfGame"] + 1)
+
+    for pitch_type in list(filter(re.compile("PitchType_*").match, list(data.columns))):
+        pt = pitch_type.split('_')[1]
+        data[f"ReleaseSpeed{pt}"] = data["ReleaseSpeed"] * data[pitch_type]
+        group_col = (
+            data["PitcherID"].astype(str) +
+            data["GameNumber"].astype(str) +
+            "," +
+            data["GameSeqNum"].astype(str)
+        )
+        data["temp"] = _group_by_cumsum(group_col, data[f"ReleaseSpeed{pt}"])
+        data[f"ReleaseSpeedAvgGame{pt}"] = data["temp"]/data[f"PitchOfGame{pt}"]
+        data[f"ReleaseSpeedAvgGame{pt}"] = data[f"ReleaseSpeedAvgGame{pt}"].nans_to_nulls().fillna(0)
+    data = data.drop(columns=["temp"])
     return data
 
 
@@ -139,6 +206,29 @@ def pitch_of_game(data):
         outcols={"PitchOfGame": np.int16}
     )
     return results.sort_index()
+
+
+def pitch_of_game_pitch_type(data):
+    """ Calculates a numeric value that gives the current number of pitches of each pitch type the pitcher has thrown in 
+    the current game.
+
+    Parameters
+    ----------
+    data (DataFrame) : the dataset containing the pitches
+
+    Returns
+    -------
+    DataFrame : the dataset with the features PitchOfGameCB, PitchOfGameCF, etc.
+    """
+    for pitch_type in list(filter(re.compile("PitchType_*").match, list(data.columns))):
+        group_col = (
+            data["PitcherID"].astype(str) +
+            data["GameNumber"].astype(str) +
+            "," +
+            data["GameSeqNum"].astype(str).str.zfill(3)
+        )
+        data[f"PitchOfGame{pitch_type.split('_')[1]}"] = _group_by_cumsum(group_col, data[pitch_type])
+    return data
 
 
 def pitch_of_season(data):
