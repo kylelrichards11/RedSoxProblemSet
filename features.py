@@ -99,6 +99,45 @@ def appearance_gap(data):
     return data
 
 
+def cumulative_avg_movements_game(data):
+    """ Calculates a numeric value that gives the cumulative pitch movements per pitch type and overall per game.
+    
+    Parameters
+    ----------
+    data (DataFrame) : the dataset containing the pitches
+
+    Returns
+    -------
+    DataFrame : the dataset with the features PitchBreakHorzAvgGame, PitchBreakVertAvgGameCB, PitchBreakHorzAvgGameCH,
+    PitchBreakVertAvgGameCH, etc.
+    """
+
+    for dirc in ["Horz", "Vert"]:
+        group_col = (
+            data["PitcherID"].astype(str) +
+            data["GameNumber"].astype(str) +
+            "," +
+            data["GameSeqNum"].astype(str)
+        )
+        data["temp"] = _group_by_cumsum(group_col, data[f"PitchBreak{dirc}"])
+        data[f"PitchBreak{dirc}AvgGame"] = data["temp"]/(data["PitchOfGame"] + 1)
+
+        for pitch_type in list(filter(re.compile("PitchType_*").match, list(data.columns))):
+            pt = pitch_type.split('_')[1]
+            data[f"PitchBreak{dirc}{pt}"] = data[f"PitchBreak{dirc}"] * data[pitch_type]
+            group_col = (
+                data["PitcherID"].astype(str) +
+                data["GameNumber"].astype(str) +
+                "," +
+                data["GameSeqNum"].astype(str)
+            )
+            data["temp"] = _group_by_cumsum(group_col, data[f"PitchBreak{dirc}{pt}"])
+            data[f"PitchBreak{dirc}AvgGame{pt}"] = data["temp"]/data[f"PitchOfGame{pt}"]
+            data[f"PitchBreak{dirc}AvgGame{pt}"] = data[f"PitchBreak{dirc}AvgGame{pt}"].nans_to_nulls().fillna(0)
+    data = data.drop(columns=["temp"])
+    return data
+
+
 def cumulative_avg_velocities_game(data):
     """ Calculates a numeric value that gives the cumulative average pitch speeds per pitch type and overall per game.
     
