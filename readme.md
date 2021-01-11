@@ -12,6 +12,8 @@ Because the data is imbalanced, I had to decide how to balance overall accuracy 
 
 The final model chosen had a validation accuracy of just 67%. This is very low, but is because I heavily weighted the swing and miss results. The most naive model of just predicting that every pitch does not result in a swing and miss results in a validation accuracy of about 88%. While this is high, it is a obviously a useless model that gives no insight; the accuracy rate for pitches that are swings and misses is 0%. My model gives a validation accuracy of 71% given that the pitch is a swing and a miss. I believe that both of those numbers can be improved with more time.
 
+The prediction results for the holdout set can be seen in Predictions.csv.
+
 The top three pitcher-pitch combinations that are likeliest to produce a swing and miss when thrown by the pitcher are
 
 | Pitcher | Pitch Type |
